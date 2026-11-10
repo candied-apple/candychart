@@ -446,8 +446,41 @@ function toLValue(expr: ExprNode, pos?: number): LValueNode {
   throw new SyntaxParseError("Atama hedefi yalnızca bir değişken veya dizi elemanı olabilir.", pos);
 }
 
+function stripOptionalIfWrapper(raw: string): string {
+  const s = raw.trim();
+  const match = /^if\s*\(/i.exec(s);
+  if (!match) return raw;
+  const openIdx = match[0].length - 1;
+  let depth = 0;
+  let quote: '"' | "'" | null = null;
+  for (let i = openIdx; i < s.length; i++) {
+    const ch = s[i]!;
+    if (quote) {
+      if (ch === "\\" && i + 1 < s.length) {
+        i++;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "(") depth++;
+    else if (ch === ")") {
+      depth--;
+      if (depth === 0) {
+        return i === s.length - 1 ? s.slice(openIdx + 1, i) : raw;
+      }
+    }
+  }
+  return raw;
+}
+
 export function parseExpression(raw: string, options?: { forbidAssignment?: boolean }): ExprNode {
-  const tokens = tokenize(raw);
+  const cleaned = stripOptionalIfWrapper(raw);
+  const tokens = tokenize(cleaned);
   const parser = new Parser(tokens);
   return parser.parseSingleExpr(options?.forbidAssignment ?? false);
 }

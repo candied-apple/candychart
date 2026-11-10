@@ -271,4 +271,48 @@ describe("CandyChart Flowchart Engine", () => {
       expect(cur.outputs.some((o) => o.text.includes(cfg.expectedOut))).toBe(true);
     }
   });
+
+  test("supports &&, ||, !, and optional if(...) wrapper in Decision nodes", () => {
+    const runCond = (cond: string) => {
+      const nodes: FlowNode[] = [
+        makeNode("s", "start"),
+        makeNode("p", "process", { code: "a = 10\nb = 5\nkapali = false" }),
+        makeNode("d", "decision", { condition: cond }),
+        makeNode("o1", "output", { expression: '"EVET"' }),
+        makeNode("o2", "output", { expression: '"HAYIR"' }),
+        makeNode("e", "end"),
+      ];
+      const edges: FlowEdge[] = [
+        makeEdge("e1", "s", "p"),
+        makeEdge("e2", "p", "d"),
+        makeEdge("e3", "d", "o1", "true"),
+        makeEdge("e4", "d", "o2", "false"),
+        makeEdge("e5", "o1", "e"),
+        makeEdge("e6", "o2", "e"),
+      ];
+      const { state, validationErrors } = initializeExecution(nodes, edges);
+      expect(validationErrors).toEqual([]);
+      return runUntilPause(state, nodes, edges).outputs[0]?.text;
+    };
+
+    expect(runCond("a > 5 && b < 10")).toBe("EVET");
+    expect(runCond("a > 20 || b == 5")).toBe("EVET");
+    expect(runCond("!kapali && !(a < 5)")).toBe("EVET");
+    expect(runCond("!(a > 5 || b < 10)")).toBe("HAYIR");
+    expect(runCond("if (a >= 10 && !kapali)")).toBe("EVET");
+
+    const singleAmpErr = validateFlowchart(
+      [
+        makeNode("s", "start"),
+        makeNode("d", "decision", { condition: "a > 0 & b > 0" }),
+        makeNode("e", "end"),
+      ],
+      [
+        makeEdge("e1", "s", "d"),
+        makeEdge("e2", "d", "e", "true"),
+        makeEdge("e3", "d", "e", "false"),
+      ],
+    );
+    expect(singleAmpErr[0]?.message).toContain("&&");
+  });
 });

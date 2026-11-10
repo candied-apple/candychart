@@ -262,11 +262,53 @@ export function InspectorPanel({
                 onChange={(e) =>
                   onUpdateNodeData(selectedNode.id, { condition: e.target.value })
                 }
-                placeholder="ör: sayi % 2 == 0"
+                placeholder="ör: sayi > 0 && sayi < 100"
                 spellCheck={false}
                 className={`${INPUT_CLS} font-mono`}
               />
+              <div className="mt-2 flex flex-wrap gap-1">
+                {[
+                  { label: "&&", insert: " && " },
+                  { label: "||", insert: " || " },
+                  { label: "!", insert: "!" },
+                  { label: "==", insert: " == " },
+                  { label: "!=", insert: " != " },
+                  { label: "<", insert: " < " },
+                  { label: "<=", insert: " <= " },
+                  { label: ">", insert: " > " },
+                  { label: ">=", insert: " >= " },
+                  { label: "()", insert: "()" },
+                ].map((op) => (
+                  <button
+                    key={op.label}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const el = primaryInputRef.current as HTMLInputElement | null;
+                      const cur = selectedNode.data.condition ?? "";
+                      const start = el?.selectionStart ?? cur.length;
+                      const end = el?.selectionEnd ?? cur.length;
+                      const next = cur.slice(0, start) + op.insert + cur.slice(end);
+                      onUpdateNodeData(selectedNode.id, { condition: next });
+                      const caret =
+                        op.label === "()" ? start + 1 : start + op.insert.length;
+                      requestAnimationFrame(() => {
+                        el?.focus();
+                        el?.setSelectionRange(caret, caret);
+                      });
+                    }}
+                    className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 font-mono text-[11px] font-semibold text-amber-300 hover:bg-neutral-700 active:bg-neutral-600 transition-colors"
+                  >
+                    {op.label}
+                  </button>
+                ))}
+              </div>
               <p className="mt-1.5 text-[11px] text-neutral-400">
+                Örnek: <code className="text-neutral-200">x &gt; 0 &amp;&amp; y &lt; 10</code>,{" "}
+                <code className="text-neutral-200">a == 1 || b == 2</code>,{" "}
+                <code className="text-neutral-200">!(x == 0)</code>
+              </p>
+              <p className="mt-1 text-[11px] text-neutral-400">
                 Koşul doğruysa <span className="font-bold text-emerald-400">Evet (Sol)</span>,
                 yanlışsa <span className="font-bold text-rose-400">Hayır (Sağ)</span> dalından devam eder.
               </p>

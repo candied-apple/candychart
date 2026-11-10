@@ -277,6 +277,10 @@ export function tokenize(input: string): Token[] {
         tokens.push({ type: "COLON", value: ch, pos: i });
         i++;
         break;
+      case "&":
+        throw new SyntaxParseError("Tek '&' yerine mantıksal VE için '&&' kullanın.", i);
+      case "|":
+        throw new SyntaxParseError("Tek '|' yerine mantıksal VEYA için '||' kullanın.", i);
       default:
         throw new SyntaxParseError(`Beklenmeyen karakter: '${ch}'`, i);
     }

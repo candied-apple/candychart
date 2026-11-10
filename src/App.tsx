@@ -641,6 +641,10 @@ function FlowchartStudio() {
             fitView
             fitViewOptions={{ padding: 0.2 }}
             deleteKeyCode={["Backspace", "Delete"]}
+            selectionKeyCode={null}
+            multiSelectionKeyCode={null}
+            zoomActivationKeyCode={null}
+            panActivationKeyCode={null}
             defaultEdgeOptions={{
               type: "smoothstep",
               interactionWidth: 36,

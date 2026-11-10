@@ -239,7 +239,7 @@ function DecisionNode({ data, selected }: NodeProps<FlowNode>) {
         <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400">
           Karar (If-Else)
         </span>
-        <span className="font-mono text-xs font-semibold text-neutral-100 line-clamp-2 max-w-[118px] break-all">
+        <span className="font-mono text-xs font-semibold text-neutral-100 line-clamp-2 max-w-[118px] break-words">
           {cond}
         </span>
       </div>
