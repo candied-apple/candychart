@@ -14,6 +14,16 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
+  ArrowLeftRight,
+  LayoutGrid,
+  Pencil,
+  Shapes,
+  Sliders,
+  Terminal,
+  Trash2,
+  X,
+} from "lucide-react";
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -82,10 +92,15 @@ function FlowchartStudio() {
   );
   const [runErrors, setRunErrors] = useState<FlowchartError[]>([]);
   const [animatedRun, setAnimatedRun] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<
+    "canvas" | "palette" | "inspector" | "console"
+  >("canvas");
+  const [isClickConnecting, setIsClickConnecting] = useState(false);
 
   const nodeCounterRef = useRef(100);
   const staggerRef = useRef(0);
   const canvasWrapperRef = useRef<HTMLDivElement | null>(null);
+  const lastNodeTapRef = useRef<{ id: string; time: number } | null>(null);
 
   const liveValidationErrors = useMemo(
     () => validateFlowchart(nodes, edges),
@@ -155,12 +170,19 @@ function FlowchartStudio() {
     return () => window.clearTimeout(timer);
   }, [execution, nodes, edges]);
 
+  useEffect(() => {
+    if (execution.status === "waiting_input" || execution.status === "error") {
+      setMobilePanel("console");
+    }
+  }, [execution.status]);
+
   const resetExecution = useCallback(() => {
     setExecution(createIdleExecutionState());
     setRunErrors([]);
   }, []);
 
   const handleRun = useCallback(() => {
+    setMobilePanel("console");
     let baseState = execution;
     if (
       baseState.status === "idle" ||
@@ -204,6 +226,7 @@ function FlowchartStudio() {
       setRunErrors(init.validationErrors);
       if (init.state.status === "error") {
         setExecution(init.state);
+        setMobilePanel("console");
         if (init.state.error?.nodeId) {
           setSelectedNodeId(init.state.error.nodeId);
         }
@@ -211,11 +234,17 @@ function FlowchartStudio() {
       }
       const stepped = stepExecution(init.state, nodes, edges);
       setExecution(stepped);
+      if (stepped.status === "waiting_input" || stepped.status === "error") {
+        setMobilePanel("console");
+      }
       return;
     }
 
     const stepped = stepExecution(execution, nodes, edges);
     setExecution(stepped);
+    if (stepped.status === "waiting_input" || stepped.status === "error") {
+      setMobilePanel("console");
+    }
     if (stepped.status === "error" && stepped.error?.nodeId) {
       setSelectedNodeId(stepped.error.nodeId);
     }
@@ -318,6 +347,7 @@ function FlowchartStudio() {
         : { x: 240 + offset, y: 200 + offset };
 
       addNodeAtPosition(kind, center);
+      setMobilePanel("canvas");
     },
     [reactFlow, addNodeAtPosition],
   );
@@ -460,6 +490,7 @@ function FlowchartStudio() {
         duration: 350,
       });
       setFocusTrigger((c) => c + 1);
+      setMobilePanel("canvas");
     },
     [nodes, reactFlow, setNodes],
   );
@@ -532,8 +563,14 @@ function FlowchartStudio() {
     [setNodes, setEdges, resetExecution, reactFlow],
   );
 
+  const selectedEdgeCanSwap = useMemo(() => {
+    if (!selectedEdge) return false;
+    const src = nodes.find((n) => n.id === selectedEdge.source);
+    return src?.data.kind === "decision" || src?.data.kind === "for";
+  }, [selectedEdge, nodes]);
+
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-neutral-950">
+    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-neutral-950">
       <Toolbar
         activeTemplateId={activeTemplateId}
         status={execution.status}
@@ -549,8 +586,11 @@ function FlowchartStudio() {
         onImportJson={handleImportJson}
       />
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <PaletteSidebar onAddNode={handleQuickAddNode} />
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
+        {/* Desktop Left Sidebar */}
+        <aside className="hidden lg:flex w-60 xl:w-64 shrink-0 border-r border-neutral-800 h-full">
+          <PaletteSidebar onAddNode={handleQuickAddNode} />
+        </aside>
 
         {/* Center Flowchart Canvas */}
         <main
@@ -566,12 +606,36 @@ function FlowchartStudio() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={handleConnect}
+            onClickConnectStart={() => setIsClickConnecting(true)}
+            onClickConnectEnd={() => setIsClickConnecting(false)}
+            onPaneClick={() => setIsClickConnecting(false)}
             onSelectionChange={handleSelectionChange}
+            onNodeClick={(_, node) => {
+              const now = Date.now();
+              const prev = lastNodeTapRef.current;
+              if (prev && prev.id === node.id && now - prev.time < 320) {
+                lastNodeTapRef.current = null;
+                setSelectedNodeId(node.id);
+                setSelectedEdgeId(null);
+                setFocusTrigger((c) => c + 1);
+                setMobilePanel("inspector");
+              } else {
+                lastNodeTapRef.current = { id: node.id, time: now };
+              }
+            }}
             onNodeDoubleClick={(_, node) => {
               setSelectedNodeId(node.id);
               setSelectedEdgeId(null);
               setFocusTrigger((c) => c + 1);
+              setMobilePanel("inspector");
             }}
+            nodeDragThreshold={8}
+            connectionDragThreshold={6}
+            connectionRadius={38}
+            connectOnClick
+            panOnDrag
+            zoomOnPinch
+            zoomOnDoubleClick={false}
             snapToGrid
             snapGrid={[16, 16]}
             fitView
@@ -579,6 +643,7 @@ function FlowchartStudio() {
             deleteKeyCode={["Backspace", "Delete"]}
             defaultEdgeOptions={{
               type: "smoothstep",
+              interactionWidth: 36,
             }}
             proOptions={{ hideAttribution: true }}
           >
@@ -595,13 +660,70 @@ function FlowchartStudio() {
               nodeColor={(n) =>
                 MINIMAP_COLORS[(n.data as FlowNodeData).kind] ?? "#737373"
               }
-              className="!border !border-neutral-700 !rounded-lg !shadow-md"
+              className="hidden sm:block !border !border-neutral-700 !rounded-lg !shadow-md"
             />
           </ReactFlow>
+
+          {isClickConnecting && (
+            <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-20 max-w-[90%] rounded-full border border-amber-500/60 bg-neutral-900/95 px-3.5 py-1.5 text-center text-[11px] font-semibold text-amber-300 shadow-lg">
+              Hedef bağlantı noktasına dokunun (İptal: boşluğa dokunun)
+            </div>
+          )}
+
+          {/* Touch-friendly Floating Quick Actions on Mobile/Tablet */}
+          {mobilePanel === "canvas" && (selectedNode || selectedEdge) && (
+            <div className="lg:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border border-neutral-700 bg-neutral-900/95 px-2.5 py-1.5 shadow-xl backdrop-blur-sm">
+              {selectedNode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFocusTrigger((c) => c + 1);
+                      setMobilePanel("inspector");
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs font-semibold text-neutral-100 hover:bg-neutral-700"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-amber-400" />
+                    Düzenle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteNode(selectedNode.id)}
+                    className="inline-flex items-center gap-1 rounded-full bg-rose-950/80 px-3 py-1 text-xs font-semibold text-rose-300 hover:bg-rose-900/80"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Sil
+                  </button>
+                </>
+              )}
+              {selectedEdge && (
+                <>
+                  {selectedEdgeCanSwap && (
+                    <button
+                      type="button"
+                      onClick={() => handleSwapEdgeBranch(selectedEdge.id)}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1 text-xs font-semibold text-neutral-100 hover:bg-neutral-700"
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5 text-amber-400" />
+                      Dalı Değiştir
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteEdge(selectedEdge.id)}
+                    className="inline-flex items-center gap-1 rounded-full bg-rose-950/80 px-3 py-1 text-xs font-semibold text-rose-300 hover:bg-rose-900/80"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Bağlantıyı Sil
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </main>
 
-        {/* Right Sidebar: Inspector + Test Console */}
-        <aside className="w-80 lg:w-96 shrink-0 border-l border-neutral-800 bg-neutral-900 flex flex-col h-full min-h-0">
+        {/* Desktop Right Sidebar: Inspector + Test Console */}
+        <aside className="hidden lg:flex w-80 xl:w-96 shrink-0 border-l border-neutral-800 bg-neutral-900 flex-col h-full min-h-0">
           <InspectorPanel
             selectedNode={selectedNode}
             selectedEdge={selectedEdge}
@@ -622,7 +744,176 @@ function FlowchartStudio() {
             onRun={handleRun}
           />
         </aside>
+
+        {/* Mobile & Tablet Overlay Panels (< lg) */}
+        {mobilePanel !== "canvas" && (
+          <div className="lg:hidden absolute inset-0 z-30 flex">
+            <div
+              className="absolute inset-0 bg-black/55 backdrop-blur-[1px]"
+              onClick={() => setMobilePanel("canvas")}
+            />
+
+            {mobilePanel === "palette" && (
+              <div className="relative z-10 w-72 max-w-[85vw] h-full border-r border-neutral-800 bg-neutral-900 shadow-2xl">
+                <PaletteSidebar
+                  onAddNode={handleQuickAddNode}
+                  onClose={() => setMobilePanel("canvas")}
+                />
+              </div>
+            )}
+
+            {(mobilePanel === "inspector" || mobilePanel === "console") && (
+              <div className="relative z-10 mt-auto md:mt-0 md:ml-auto w-full md:w-96 md:max-w-[85vw] h-[64dvh] md:h-full rounded-t-2xl md:rounded-none border-t md:border-t-0 md:border-l border-neutral-700 bg-neutral-900 shadow-2xl flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950/70 px-3 py-2 shrink-0">
+                  <div className="flex items-center gap-1 rounded-lg bg-neutral-900 p-0.5 border border-neutral-800">
+                    <button
+                      type="button"
+                      onClick={() => setMobilePanel("inspector")}
+                      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        mobilePanel === "inspector"
+                          ? "bg-neutral-700 text-white"
+                          : "text-neutral-400 hover:text-neutral-200"
+                      }`}
+                    >
+                      <Sliders className="h-3.5 w-3.5" />
+                      Özellikler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMobilePanel("console")}
+                      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        mobilePanel === "console"
+                          ? "bg-neutral-700 text-white"
+                          : "text-neutral-400 hover:text-neutral-200"
+                      }`}
+                    >
+                      <Terminal className="h-3.5 w-3.5" />
+                      Konsol
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobilePanel("canvas")}
+                    aria-label="Paneli kapat"
+                    className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {mobilePanel === "inspector" ? (
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    <InspectorPanel
+                      selectedNode={selectedNode}
+                      selectedEdge={selectedEdge}
+                      nodes={nodes}
+                      validationErrors={liveValidationErrors}
+                      focusTrigger={focusTrigger}
+                      onUpdateNodeData={handleUpdateNodeData}
+                      onDeleteNode={handleDeleteNode}
+                      onDeleteEdge={handleDeleteEdge}
+                      onSwapEdgeBranch={handleSwapEdgeBranch}
+                      onFocusNode={handleFocusNode}
+                    />
+                  </div>
+                ) : (
+                  <ConsolePanel
+                    execution={execution}
+                    allValidationErrors={runErrors}
+                    onSubmitInput={handleSubmitInput}
+                    onFocusNode={handleFocusNode}
+                    onRun={handleRun}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Mobile & Tablet Bottom Navigation Bar (< lg) */}
+      <nav
+        aria-label="Mobil panel gezintisi"
+        className="lg:hidden shrink-0 border-t border-neutral-800 bg-neutral-900 grid grid-cols-4 pb-[env(safe-area-inset-bottom)] select-none z-30"
+      >
+        <button
+          type="button"
+          onClick={() => setMobilePanel("canvas")}
+          className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
+            mobilePanel === "canvas"
+              ? "text-white bg-neutral-800/70"
+              : "text-neutral-400 hover:text-neutral-200"
+          }`}
+        >
+          <LayoutGrid className="h-4 w-4" />
+          <span>Tuval</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setMobilePanel((p) => (p === "palette" ? "canvas" : "palette"))
+          }
+          className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
+            mobilePanel === "palette"
+              ? "text-white bg-neutral-800/70"
+              : "text-neutral-400 hover:text-neutral-200"
+          }`}
+        >
+          <Shapes className="h-4 w-4" />
+          <span>Şekiller</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setMobilePanel((p) => (p === "inspector" ? "canvas" : "inspector"))
+          }
+          className={`relative flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
+            mobilePanel === "inspector"
+              ? "text-white bg-neutral-800/70"
+              : "text-neutral-400 hover:text-neutral-200"
+          }`}
+        >
+          <Sliders className="h-4 w-4" />
+          <span>Özellikler</span>
+          {(selectedNode || selectedEdge || liveValidationErrors.length > 0) && (
+            <span
+              className={`absolute top-1.5 right-1/4 h-2 w-2 rounded-full ${
+                liveValidationErrors.length > 0 ? "bg-rose-500" : "bg-amber-400"
+              }`}
+            />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setMobilePanel((p) => (p === "console" ? "canvas" : "console"))
+          }
+          className={`relative flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
+            mobilePanel === "console"
+              ? "text-white bg-neutral-800/70"
+              : "text-neutral-400 hover:text-neutral-200"
+          }`}
+        >
+          <Terminal className="h-4 w-4" />
+          <span>Konsol</span>
+          {(execution.status === "waiting_input" ||
+            execution.status === "error" ||
+            execution.outputs.length > 0) && (
+            <span
+              className={`absolute top-1.5 right-1/4 h-2 w-2 rounded-full ${
+                execution.status === "error"
+                  ? "bg-rose-500"
+                  : execution.status === "waiting_input"
+                    ? "bg-amber-400 animate-pulse"
+                    : "bg-emerald-400"
+              }`}
+            />
+          )}
+        </button>
+      </nav>
     </div>
   );
 }

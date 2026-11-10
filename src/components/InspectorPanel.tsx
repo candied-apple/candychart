@@ -64,7 +64,7 @@ const KIND_BADGE: Record<
 };
 
 const INPUT_CLS =
-  "w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-neutral-100 placeholder:text-neutral-500 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500/20";
+  "w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 md:py-1.5 text-base md:text-xs text-neutral-100 placeholder:text-neutral-500 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500/20";
 
 export function InspectorPanel({
   selectedNode,
@@ -112,7 +112,7 @@ export function InspectorPanel({
     }
 
     return (
-      <div className="flex flex-col border-b border-neutral-800 bg-neutral-900">
+      <div className="flex flex-col border-b border-neutral-800 bg-neutral-900 overflow-y-auto">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-800 bg-neutral-950/50">
           <span
             className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-bold ${badge.badgeClass}`}
@@ -355,7 +355,7 @@ export function InspectorPanel({
       sourceNode?.data.kind === "decision" || sourceNode?.data.kind === "for";
 
     return (
-      <div className="flex flex-col border-b border-neutral-800 bg-neutral-900">
+      <div className="flex flex-col border-b border-neutral-800 bg-neutral-900 overflow-y-auto">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-800 bg-neutral-950/50">
           <span className="text-xs font-bold text-neutral-200">
             Bağlantı (Akış Oku)

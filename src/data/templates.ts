@@ -33,6 +33,7 @@ export function makeStyledEdge(params: {
     sourceHandle,
     targetHandle,
     type: "smoothstep",
+    interactionWidth: 36,
     label,
     style: { stroke, strokeWidth: 2 },
     labelStyle: {

@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import type { DragEvent } from "react";
 import type { FlowNodeType } from "../types/flowchart";
 
@@ -142,26 +143,39 @@ const PALETTE_ITEMS: PaletteItem[] = [
 
 interface PaletteSidebarProps {
   onAddNode: (kind: FlowNodeType) => void;
+  onClose?: () => void;
 }
 
-export function PaletteSidebar({ onAddNode }: PaletteSidebarProps) {
+export function PaletteSidebar({ onAddNode, onClose }: PaletteSidebarProps) {
   const handleDragStart = (event: DragEvent<HTMLButtonElement>, kind: FlowNodeType) => {
     event.dataTransfer.setData("application/candychart-node", kind);
     event.dataTransfer.effectAllowed = "move";
   };
 
   return (
-    <aside className="w-64 shrink-0 border-r border-neutral-800 bg-neutral-900 flex flex-col h-full select-none">
-      <div className="px-4 py-3 border-b border-neutral-800">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
-          Akış Şeması Şekilleri
-        </h2>
-        <p className="text-[11px] text-neutral-500 mt-0.5">
-          Tuvale sürükleyin veya eklemek için tıklayın
-        </p>
+    <div className="w-full h-full bg-neutral-900 flex flex-col select-none">
+      <div className="px-4 py-3 border-b border-neutral-800 flex items-center justify-between gap-2">
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
+            Akış Şeması Şekilleri
+          </h2>
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            Eklemek için dokunun veya sürükleyin
+          </p>
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Şekiller panelini kapat"
+            className="lg:hidden rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div className="flex-1 overflow-y-auto touch-pan-y p-3 space-y-2">
         {PALETTE_ITEMS.map((item) => (
           <button
             key={item.kind}
@@ -188,10 +202,10 @@ export function PaletteSidebar({ onAddNode }: PaletteSidebarProps) {
         <div className="font-semibold text-neutral-300">Kısayollar & İpuçları</div>
         <ul className="space-y-1 list-disc pl-4 text-neutral-400">
           <li>Bağlamak için noktalardan ok çekin.</li>
-          <li>Düğüm düzenlemek için tıklayın.</li>
-          <li>Seçili öğeyi silmek için <kbd className="rounded border border-neutral-700 bg-neutral-800 px-1 text-[10px] text-neutral-200">Del</kbd> tuşuna basın.</li>
+          <li>Düğüm düzenlemek için seçip Düzenle&apos;ye dokunun.</li>
+          <li className="hidden lg:list-item">Seçili öğeyi silmek için <kbd className="rounded border border-neutral-700 bg-neutral-800 px-1 text-[10px] text-neutral-200">Del</kbd> tuşuna basın.</li>
         </ul>
       </div>
-    </aside>
+    </div>
   );
 }

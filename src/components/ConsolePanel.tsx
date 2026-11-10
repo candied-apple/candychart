@@ -232,11 +232,11 @@ export function ConsolePanel({
                         ? `Değerleri virgülle girin (${execution.pendingInput.varNames.join(", ")})`
                         : "Değer yazıp Enter'a basın..."
                     }
-                    className="flex-1 min-w-0 rounded-md border border-neutral-700 bg-neutral-950 px-2.5 py-1.5 font-mono text-xs text-white placeholder:text-neutral-500 focus:border-neutral-400 focus:outline-none"
+                    className="flex-1 min-w-0 rounded-md border border-neutral-700 bg-neutral-950 px-2.5 py-2 md:py-1.5 font-mono text-base md:text-xs text-white placeholder:text-neutral-500 focus:border-neutral-400 focus:outline-none"
                   />
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-1 rounded-md bg-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:bg-white transition-colors shrink-0"
+                    className="inline-flex items-center gap-1 rounded-md bg-neutral-200 px-3 py-2 md:py-1.5 text-xs font-semibold text-neutral-900 hover:bg-white transition-colors shrink-0"
                   >
                     Gönder
                     <CornerDownLeft className="h-3 w-3" />
